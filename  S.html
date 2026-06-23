@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Phosphor Matrix</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#000;--surface:#080808;--card:#0e0e0e;--border:#1a1a1a;--text:#c8c8c8;--dim:#505050;--accent:#00ffcc;--danger:#ff0055;--warn:#ffcc00;--radius:5px}
+html,body{height:100%;overflow:hidden;background:var(--bg);background-image:linear-gradient(rgba(0,255,204,.012) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,204,.012) 1px,transparent 1px);background-size:48px 48px;color:var(--text);font-family:'Courier New',monospace;font-size:13px;line-height:1.5}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--surface)}::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:2px}
+#app{display:grid;grid-template-columns:310px 1fr;grid-template-rows:auto 1fr;height:100vh}
+@media(max-width:900px){#app{grid-template-columns:1fr;grid-template-rows:auto auto 1fr 200px}}
+#hdr{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border)}
+#hdr h1{font-size:14px;font-weight:700;letter-spacing:3px;color:var(--accent);text-shadow:0 0 10px rgba(0,255,204,.35)}
+.hdr-sep{flex:1}
+.hdr-badge{font-size:9px;padding:2px 7px;border:1px solid var(--border);border-radius:3px;color:var(--dim);letter-spacing:.5px}
+#iso-badge.on{color:var(--accent);border-color:rgba(0,255,204,.25)}
+.net-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle;transition:.3s}
+.net-dot.ok{background:#00ff88;box-shadow:0 0 6px rgba(0,255,136,.5)}
+.net-dot.off{background:#ff4466;box-shadow:0 0 6px rgba(255,68,102,.4)}
+#eng-status{font-size:10px;padding:3px 8px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+#eng-status.ok{background:#0a1a12;color:var(--accent)}
+#eng-status.err{background:#1a0a0e;color:var(--danger)}
+#eng-status.load{background:#1a1a0a;color:var(--warn)}
+#sidebar{grid-row:2;overflow-y:auto;padding:10px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+@media(max-width:900px){#sidebar{grid-row:2;border-right:none;border-bottom:1px solid var(--border);max-height:42vh}}
+.sec{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.sec-h{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:rgba(255,255,255,.015);border-bottom:1px solid var(--border);user-select:none}
+.sec-h span{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
+.sec-b{padding:8px 10px;display:flex;flex-direction:column;gap:7px}
+.sec-b.hide{display:none}
+.fld{display:flex;flex-direction:column;gap:3px}
+.fld-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.fld select,.fld input[type=number],.fld input[type=text]{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:3px;font-family:inherit;font-size:12px;outline:none;transition:border-color .15s}
+.fld select:focus,.fld input:focus{border-color:var(--accent)}
+.fld select{cursor:pointer}
+.row{display:flex;gap:6px;align-items:center}.row>*{flex:1;min-width:0}
+.val{min-width:38px;text-align:right;font-size:11px;color:var(--accent);font-weight:700}
+input[type=range]{-webkit-appearance:none;width:100%;background:var(--border);height:3px;border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 6px rgba(0,255,204,.3)}
+.tgl-wrap{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;cursor:pointer}
+.tgl{position:relative;width:32px;height:18px;flex-shrink:0}
+.tgl input{opacity:0;width:0;height:0;position:absolute}
+.tgl .sl{position:absolute;inset:0;background:#1a1a1a;border-radius:9px;transition:.15s}
+.tgl .sl::before{content:'';position:absolute;left:2px;top:2px;width:14px;height:14px;background:#444;border-radius:50%;transition:.15s}
+.tgl input:checked+.sl{background:rgba(0,255,204,.15)}
+.tgl input:checked+.sl::before{transform:translateX(14px);background:var(--accent);box-shadow:0 0 6px rgba(0,255,204,.4)}
+.fbtn{display:flex;align-items:center;justify-content:center;gap:5px;padding:7px;background:var(--bg);border:1px dashed var(--border);border-radius:3px;color:var(--dim);font-size:10px;cursor:pointer;transition:.15s;text-transform:uppercase;letter-spacing:.5px}
+.fbtn:hover{border-color:var(--accent);color:var(--accent)}
+.fbtn input{display:none}
+.fbtn .fn{color:var(--text);font-weight:700;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
+.ram-presets{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px}
+.ram-presets button{padding:2px 7px;font-size:9px;font-family:inherit;font-weight:700;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--dim);cursor:pointer;transition:.1s}
+.ram-presets button:hover{border-color:var(--accent);color:var(--accent)}
+.ram-presets button.active{background:rgba(0,255,204,.1);border-color:var(--accent);color:var(--accent)}
+#boot-btn{width:100%;padding:10px;background:linear-gradient(135deg,rgba(0,255,204,.12),rgba(0,255,204,.04));border:1px solid rgba(0,255,204,.25);color:var(--accent);font-family:inherit;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;border-radius:var(--radius);cursor:pointer;transition:.15s;position:relative;overflow:hidden}
+#boot-btn:hover:not(:disabled){background:linear-gradient(135deg,rgba(0,255,204,.22),rgba(0,255,204,.08));box-shadow:0 0 12px rgba(0,255,204,.15)}
+#boot-btn:disabled{opacity:.3;cursor:not-allowed}
+#boot-btn.loading{animation:pulse-glow 1.5s ease-in-out infinite}
+#boot-btn::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--accent);transform:scaleX(0);transform-origin:left}
+#boot-btn.loading::after{animation:load-bar 2s linear infinite}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 8px rgba(0,255,204,.1)}50%{box-shadow:0 0 20px rgba(0,255,204,.25)}}
+@keyframes load-bar{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}
+#stop-btn{width:100%;padding:8px;background:rgba(255,0,85,.08);border:1px solid rgba(255,0,85,.25);color:var(--danger);font-family:inherit;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;border-radius:var(--radius);cursor:pointer;transition:.15s;display:none}
+#stop-btn:hover{background:rgba(255,0,85,.15)}
+#main{grid-row:2;position:relative;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center}
+#screen-wrap{width:100%;height:100%;position:relative;display:none;background:#000;transition:opacity .3s}
+#screen-wrap.on{display:block}
+#screen-wrap.running{box-shadow:inset 0 0 40px rgba(0,255,204,.04)}
+#v86-screen{width:100%;height:100%;overflow:auto}
+#v86-screen>div{font-family:monospace;font-size:14px;line-height:14px;white-space:pre;color:#fff}
+#v86-screen>canvas{display:block;width:100%;image-rendering:pixelated}
+#term-wrap{width:100%;height:100%;display:none;padding:6px}
+#term-wrap.on{display:block}
+#placeholder{display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--dim);text-align:center;padding:20px}
+#placeholder .ico{font-size:40px;opacity:.15;letter-spacing:8px;animation:breathe 3s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.1;transform:scale(1)}50%{opacity:.2;transform:scale(1.02)}}
+#placeholder p{font-size:11px;max-width:260px;line-height:1.6}
+#vm-toolbar{position:absolute;top:0;left:0;right:0;z-index:20;display:none;padding:5px 8px;background:linear-gradient(180deg,rgba(0,0,0,.85) 0%,rgba(0,0,0,.4) 80%,transparent 100%);gap:4px;flex-wrap:wrap;align-items:center}
+#vm-toolbar.on{display:flex}
+.vt-btn{padding:3px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:3px;color:var(--dim);font-family:inherit;font-size:9px;font-weight:700;cursor:pointer;transition:.12s;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap}
+.vt-btn:hover{background:rgba(0,255,204,.12);border-color:rgba(0,255,204,.3);color:var(--accent)}
+.vt-btn.danger:hover{background:rgba(255,0,85,.15);border-color:rgba(255,0,85,.3);color:var(--danger)}
+.vt-sep{width:1px;height:16px;background:rgba(255,255,255,.08);margin:0 2px}
+#focus-indicator{font-size:9px;padding:2px 6px;border-radius:3px;margin-left:auto;transition:.2s}
+#focus-indicator.captured{background:rgba(0,255,136,.12);color:#00ff88;border:1px solid rgba(0,255,136,.25)}
+#focus-indicator.lost{background:rgba(255,204,0,.1);color:var(--warn);border:1px solid rgba(255,204,0,.2)}
+#focus-overlay{position:absolute;inset:0;z-index:15;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);cursor:pointer;backdrop-filter:blur(2px)}
+#focus-overlay.on{display:flex}
+#focus-overlay span{font-size:13px;color:var(--dim);letter-spacing:1px;padding:10px 20px;border:1px dashed rgba(255,255,255,.15);border-radius:6px}
+#serial-panel{position:absolute;bottom:0;left:0;right:0;z-index:18;background:rgba(0,0,0,.92);border-top:1px solid var(--border);display:none;flex-direction:column;backdrop-filter:blur(4px)}
+#serial-panel.on{display:flex}
+#serial-hdr{display:flex;align-items:center;justify-content:space-between;padding:4px 10px;background:rgba(0,255,204,.04);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;flex-shrink:0}
+#serial-hdr span{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--dim)}
+#serial-hdr .ser-count{color:rgba(255,255,255,.2);font-weight:400}
+#serial-out{height:140px;overflow-y:auto;padding:6px 10px;font-family:'Courier New',monospace;font-size:11px;line-height:1.35;color:#8a9ab5;white-space:pre-wrap;word-break:break-all;-webkit-overflow-scrolling:touch}
+#serial-panel.collapsed #serial-out{display:none}
+#serial-panel.collapsed{height:auto!important}
+#mobile-ctrl{display:none;position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(0,0,0,.94);border-top:1px solid var(--border);backdrop-filter:blur(6px)}
+@media(max-width:900px){#mobile-ctrl{display:flex;flex-direction:column}}
+#touchpad{width:100%;height:90px;background:rgba(255,255,255,.015);border-bottom:1px solid var(--border);position:relative;overflow:hidden;touch-action:none}
+#touchpad::after{content:'TRACKPAD';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;color:rgba(255,255,255,.06);letter-spacing:4px;pointer-events:none}
+#keys-bar{display:flex;gap:3px;padding:5px 6px;overflow-x:auto;flex-shrink:0;-webkit-overflow-scrolling:touch;align-items:center}
+.kb{flex-shrink:0;padding:5px 9px;background:var(--card);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:.08s;white-space:nowrap}
+.kb:active{background:rgba(0,255,204,.15);border-color:var(--accent);color:var(--accent)}
+.kb.sticky-on{background:rgba(0,255,204,.25);border-color:var(--accent);color:var(--accent);box-shadow:0 0 8px rgba(0,255,204,.25)}
+.ksep{width:1px;height:22px;background:var(--border);flex-shrink:0;margin:0 1px}
+.arrows{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;flex-shrink:0}
+.arrows .kb{padding:5px 8px;text-align:center;min-width:32px;font-size:11px}
+#toast{position:fixed;top:50px;right:12px;z-index:999;padding:8px 14px;border-radius:var(--radius);font-size:11px;transform:translateX(130%);transition:transform .25s;max-width:320px;pointer-events:none}
+#toast.show{transform:translateX(0)}
+#toast.info{background:rgba(0,255,204,.12);border:1px solid rgba(0,255,204,.25);color:var(--accent)}
+#toast.error{background:rgba(255,0,85,.12);border:1px solid rgba(255,0,85,.25);color:var(--danger)}
+#toast.warn{background:rgba(255,204,0,.12);border:1px solid rgba(255,204,0,.25);color:var(--warn)}
+.mount-row{display:flex;gap:4px;align-items:center;padding:5px 6px;background:var(--bg);border:1px solid var(--border);border-radius:3px}
+.mount-row .ml{font-size:9px;color:var(--accent);font-weight:700;min-width:44px;text-transform:uppercase;letter-spacing:.3px}
+.mount-row select,.mount-row input[type=text]{flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:3px 5px;border-radius:2px;font-family:inherit;font-size:10px;outline:none}
+.mount-row .fbtn{padding:2px 6px;font-size:9px}
+.copy-warn{font-size:10px;color:var(--warn);padding:5px 8px;background:rgba(255,204,0,.06);border:1px solid rgba(255,204,0,.15);border-radius:3px;line-height:1.4;display:none}
+.copy-warn.on{display:block}
+.relay-row{display:none;gap:4px;align-items:center}
+.relay-row.on{display:flex}
+.relay-row input{flex:1}
+.dl-progress{display:none;align-items:center;gap:6px;padding:4px 0}
+.dl-progress.on{display:flex}
+.dl-bar{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.dl-bar-fill{height:100%;width:0;background:var(--accent);border-radius:2px;transition:width .3s}
+.dl-text{font-size:9px;color:var(--dim);min-width:80px;text-align:right}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="hdr">
+  <h1>PHOSPHOR MATRIX</h1>
+  <div class="hdr-sep"></div>
+  <span class="net-dot" id="net-dot"></span>
+  <span class="hdr-badge" id="iso-badge">--</span>
+  <div id="eng-status" class="load">Loading engine...</div>
+</div>
+<div id="sidebar">
+  <div class="sec"><div class="sec-h"><span>Engine</span></div><div class="sec-b"><div class="fld"><div class="fld-label">Emulation Core</div><select id="sel-engine"><option value="v86">v86 (x16 / x32)</option><option value="qemu">qemu-wasm (x64)</option></select></div></div></div>
+  <div class="sec" id="sec-profile"><div class="sec-h"><span>Operating System</span></div><div class="sec-b">
+    <div class="fld" id="fld-preset"><div class="fld-label">Profile</div><select id="sel-profile"><option value="">-- Select --</option><option value="freedos">FreeDOS</option><option value="kolibrios">KolibriOS</option><option value="linux26">Linux 2.6</option><option value="win98">Windows 98</option><option value="custom">Custom Image...</option></select></div>
+    <div id="wrap-custom" style="display:none"><label class="fbtn">Choose ISO / IMG<input type="file" id="inp-custom" accept=".iso,.img,.bin"><span class="fn" id="fn-custom"></span></label></div>
+    <div id="wrap-x64" style="display:none"><div class="fld-label" style="margin-bottom:3px">System Image</div><label class="fbtn">Choose ISO / IMG / QCOW2<input type="file" id="inp-x64" accept=".iso,.img,.bin,.qcow2,.raw"><span class="fn" id="fn-x64"></span></label></div>
+    <div class="copy-warn" id="copy-warn">copy.sh unreachable — images fetched via CORS proxy. Large images may take 30-90s on first boot.</div>
+    <div class="dl-progress" id="dl-progress"><div class="dl-bar"><div class="dl-bar-fill" id="dl-fill"></div></div><span class="dl-text" id="dl-text">0%</span></div>
+  </div></div>
+  <div class="sec"><div class="sec-h"><span>Hardware</span></div><div class="sec-b">
+    <div id="ram-v86"><div class="fld"><div class="fld-label">System RAM</div><div class="row"><input type="range" id="sl-ram" min="16" max="512" value="64" step="16"><span class="val" id="v-ram">64 MB</span></div></div></div>
+    <div id="ram-qemu" style="display:none"><div class="fld"><div class="fld-label">System RAM</div><div class="row"><input type="number" id="inp-ram" value="2" min="0" max="32" step="1" style="flex:2"><select id="sel-ramunit" style="flex:1"><option value="1024" selected>GB</option><option value="1">MB</option></select></div><div class="ram-presets" id="ram-presets"><button type="button" data-mb="512">512M</button><button type="button" data-mb="1024">1G</button><button type="button" data-mb="2048">2G</button><button type="button" data-mb="4096">4G</button><button type="button" data-mb="8192">8G</button><button type="button" data-mb="16384">16G</button><button type="button" data-mb="32768">32G</button></div></div></div>
+    <div class="fld" id="fld-vga"><div class="fld-label">VGA RAM</div><div class="row"><input type="range" id="sl-vga" min="2" max="32" value="8" step="2"><span class="val" id="v-vga">8 MB</span></div></div>
+    <div class="fld"><div class="fld-label">Boot Order</div><select id="sel-boot"><option value="cdrom">CD-ROM First</option><option value="hda">Hard Disk First</option><option value="fda">Floppy First</option></select></div>
+    <div class="row"><label class="tgl-wrap"><label class="tgl"><input type="checkbox" id="chk-acpi" checked><span class="sl"></span></label>ACPI</label><label class="tgl-wrap"><label class="tgl"><input type="checkbox" id="chk-apic"><span class="sl"></span></label>APIC</label></div>
+    <div class="fld"><label class="tgl-wrap"><label class="tgl"><input type="checkbox" id="chk-net"><span class="sl"></span></label>Network (v86 relay)</label><div class="row relay-row" id="relay-row"><input type="text" id="inp-relay" value="wss://relay.widgetry.org/" placeholder="wss://..."></div></div>
+    <div class="fld"><div class="fld-label">Storage Pipeline</div><select id="sel-storage"><option value="volatile">Volatile (RAM Disk)</option><option value="native">Native File Handle (Chromium)</option><option value="opfs">OPFS Sandbox (Safari / iOS)</option></select></div>
+  </div></div>
+  <div class="sec"><div class="sec-h"><span>Device Mounts</span><label class="tgl"><input type="checkbox" id="chk-adv"><span class="sl"></span></label></div><div class="sec-b hide" id="adv-body">
+    <div class="mount-row"><span class="ml">HDA</span><select class="mt" data-d="hda"><option value="none">None</option><option value="file">Local File</option><option value="url">Remote URL</option></select><input type="text" class="mu" data-d="hda" placeholder="https://..." style="display:none"><label class="fbtn" data-d="hda" style="display:none;padding:2px 5px;font-size:8px">Pick<input type="file" class="mf" data-d="hda" accept=".img,.bin,.qcow2,.raw"></label></div>
+    <div class="mount-row"><span class="ml">CDROM</span><select class="mt" data-d="cdrom"><option value="none">None</option><option value="file">Local File</option><option value="url">Remote URL</option></select><input type="text" class="mu" data-d="cdrom" placeholder="https://..." style="display:none"><label class="fbtn" data-d="cdrom" style="display:none;padding:2px 5px;font-size:8px">Pick<input type="file" class="mf" data-d="cdrom" accept=".iso,.img,.bin"></label></div>
+    <div class="mount-row"><span class="ml">FDA</span><select class="mt" data-d="fda"><option value="none">None</option><option value="file">Local File</option><option value="url">Remote URL</option></select><input type="text" class="mu" data-d="fda" placeholder="https://..." style="display:none"><label class="fbtn" data-d="fda" style="display:none;padding:2px 5px;font-size:8px">Pick<input type="file" class="mf" data-d="fda" accept=".img,.bin"></label></div>
+    <div class="mount-row"><span class="ml">bzImage</span><select class="mt" data-d="bzimage"><option value="none">None</option><option value="file">Local File</option><option value="url">Remote URL</option></select><input type="text" class="mu" data-d="bzimage" placeholder="https://..." style="display:none"><label class="fbtn" data-d="bzimage" style="display:none;padding:2px 5px;font-size:8px">Pick<input type="file" class="mf" data-d="bzimage" accept=".bzImage,.img"></label></div>
+    <div class="mount-row"><span class="ml">Initrd</span><select class="mt" data-d="initrd"><option value="none">None</option><option value="file">Local File</option><option value="url">Remote URL</option></select><input type="text" class="mu" data-d="initrd" placeholder="https://..." style="display:none"><label class="fbtn" data-d="initrd" style="display:none;padding:2px 5px;font-size:8px">Pick<input type="file" class="mf" data-d="initrd" accept=".img,.gz"></label></div>
+  </div></div>
+  <button id="boot-btn" disabled class="loading">LOADING ENGINE...</button>
+  <button id="stop-btn">STOP EMULATION</button>
+</div>
+<div id="main">
+  <div id="placeholder"><div class="ico">&#9646;&#9646;&#9646;</div><p>Select an engine and OS profile, then initialize the core.</p></div>
+  <div id="screen-wrap">
+    <div id="vm-toolbar"><span id="focus-indicator" class="lost">Click to capture</span><div class="vt-sep"></div><button class="vt-btn" id="tb-cad">Ctrl+Alt+Del</button><button class="vt-btn" id="tb-fs">Fullscreen</button><div class="vt-sep"></div><button class="vt-btn" id="tb-save">Save State</button><button class="vt-btn" id="tb-load">Load State</button><div class="vt-sep"></div><button class="vt-btn" id="tb-serial">Serial</button><div class="vt-sep"></div><button class="vt-btn danger" id="tb-stop">Stop</button></div>
+    <div id="focus-overlay"><span>Click to capture keyboard</span></div>
+    <div id="v86-screen"></div>
+    <div id="serial-panel"><div id="serial-hdr"><span>SERIAL CONSOLE <span class="ser-count" id="ser-count">0</span></span><span id="ser-toggle">&#9660;</span></div><div id="serial-out"></div></div>
+  </div>
+  <div id="term-wrap"></div>
+</div>
+</div>
+<div id="mobile-ctrl"><div id="touchpad"></div><div id="keys-bar">
+  <button class="kb" data-sc="1">Esc</button><button class="kb" data-sc="15">Tab</button><button class="kb sticky" data-mod="ctrl">CTRL</button><button class="kb sticky" data-mod="alt">ALT</button><button class="kb" data-sc="14">Bksp</button><button class="kb" data-sc="28">Enter</button><div class="ksep"></div><button class="kb" data-sc="75">PgUp</button><button class="kb" data-sc="78">PgDn</button><button class="kb" data-sc="71">Home</button><button class="kb" data-sc="79">End</button><div class="ksep"></div><div class="arrows"><button class="kb" data-sc="103">&#8593;</button><button class="kb" data-sc="105">&#8592;</button><button class="kb" data-sc="108">&#8595;</button><button class="kb" data-sc="106">&#8594;</button></div><div class="ksep"></div><button class="kb" data-sc="57">Space</button><button class="kb" data-sc="42">PrtSc</button><button class="kb" data-sc="58">Caps</button>
+</div></div>
+<div id="toast"></div>
+
+<script>
+/* ===========================================================
+   STEP 1: Start loading v86 immediately.
+   Sets window.__v86Ctor when ready, or window.__v86Failed.
+   Does NOT call any dashboard functions — no race possible.
+   =========================================================== */
+(function(){
+  var V='v86@0.5.373',C='?v=skjemu20260622';
+  window.__v86BasePath='https://cdn.jsdelivr.net/npm/'+V;
+  var SRC=[
+    'https://cdn.jsdelivr.net/npm/'+V+'/build/libv86.js'+C,
+    'https://unpkg.com/'+V+'/build/libv86.js'+C,
+    'https://copy.sh/v86/build/libv86.js'+C
+  ];
+  var i=0;
+  function next(){
+    if(i>=SRC.length){window.__v86Failed=true;return}
+    var s=document.createElement('script');s.src=SRC[i];s.async=false;
+    s.onload=function(){
+      if(typeof V86!=='undefined'||typeof V86Starter!=='undefined'){
+        window.__v86Ctor=typeof V86!=='undefined'?V86:V86Starter;
+        console.log('[Phosphor] v86 loaded from',SRC[i]);
+      }else{i++;next()}
+    };
+    s.onerror=function(){i++;next()};
+    document.head.appendChild(s);
+  }
+  next();
+})();
+</script>
+
+<script>
+/* ===========================================================
+   STEP 2: Dashboard — polls for __v86Ctor every 100ms.
+   Runs in its own script block, own IIFE, zero dependency
+   on the loader's execution timing.
+   =========================================================== */
+(function(){
+  var emu=null,engineOK=false,copyBlocked=false;
+  var serialOpen=false,serialBuf='',serCount=0,serTimer=null;
+  var sticky={ctrl:false,alt:false,shift:false};
+  var BIOS_BASE='https://cdn.jsdelivr.net/gh/copy/v86@master/bios';
+  var PROXY='https://cors-proxy.htmldriven.com/?url=';
+
+  var PRESETS={
+    freedos:  {name:'FreeDOS',   ram:16, vga:8,boot:'cdrom',cdrom:{t:'url',u:'https://copy.sh/v86/images/freedos722.img'}},
+    kolibrios:{name:'KolibriOS', ram:128,vga:8,boot:'cdrom',cdrom:{t:'url',u:'https://copy.sh/v86/images/kolibrios.img'}},
+    linux26:  {name:'Linux 2.6', ram:64, vga:8,boot:'cdrom',cdrom:{t:'url',u:'https://copy.sh/v86/images/linux4.iso'}},
+    win98:    {name:'Windows 98',ram:64, vga:8,boot:'cdrom',cdrom:{t:'url',u:'https://copy.sh/v86/images/windows98.img'}}
+  };
+
+  var $=function(id){return document.getElementById(id)};
+  var selEngine=$('sel-engine'),selProfile=$('sel-profile'),wrapCustom=$('wrap-custom'),
+      inpCustom=$('inp-custom'),fnCustom=$('fn-custom'),wrapX64=$('wrap-x64'),
+      inpX64=$('inp-x64'),fnX64=$('fn-x64'),
+      slRam=$('sl-ram'),vRam=$('v-ram'),slVga=$('sl-vga'),vVga=$('v-vga'),
+      inpRam=$('inp-ram'),selRamUnit=$('sel-ramunit'),selBoot=$('sel-boot'),
+      chkAcpi=$('chk-acpi'),chkApic=$('chk-apic'),chkNet=$('chk-net'),relayRow=$('relay-row'),inpRelay=$('inp-relay'),
+      selStorage=$('sel-storage'),chkAdv=$('chk-adv'),advBody=$('adv-body'),
+      bootBtn=$('boot-btn'),stopBtn=$('stop-btn'),
+      screenWrap=$('screen-wrap'),termWrap=$('term-wrap'),placeholder=$('placeholder'),
+      engStatus=$('eng-status'),isoBadge=$('iso-badge'),toastEl=$('toast'),
+      ramV86=$('ram-v86'),ramQEMU=$('ram-qemu'),fldVga=$('fld-vga'),fldPreset=$('fld-preset'),
+      copyWarn=$('copy-warn'),netDot=$('net-dot'),
+      vmToolbar=$('vm-toolbar'),focusOverlay=$('focus-overlay'),focusInd=$('focus-indicator'),
+      serialPanel=$('serial-panel'),serialOut=$('serial-out'),serCountEl=$('ser-count'),
+      dlProgress=$('dl-progress'),dlFill=$('dl-fill'),dlText=$('dl-text');
+
+  var _tt=null;
+  function toast(m,t){toastEl.textContent=m;toastEl.className=(t||'info')+' show';clearTimeout(_tt);_tt=setTimeout(function(){toastEl.classList.remove('show')},4000)}
+  function setStatus(t,c){engStatus.textContent=t;engStatus.className=c||''}
+  function showDL(on){dlProgress.classList.toggle('on',on);if(!on){dlFill.style.width='0';dlText.textContent=''}}
+  function setDL(pct){dlFill.style.width=Math.min(pct,100)+'%';dlText.textContent=Math.round(pct)+'%'}
+
+  /* ---- THE POLLER ---- */
+  var pollId=null,pollCount=0;
+  function startPoll(){
+    pollId=setInterval(function(){
+      pollCount++;
+      if(window.__v86Ctor){
+        clearInterval(pollId);pollId=null;
+        engineOK=true;setStatus('v86 Ready','ok');
+        isoBadge.textContent='x86';isoBadge.classList.add('on');
+        bootBtn.classList.remove('loading');updateBootBtn();
+        toast('v86 engine loaded');
+        console.log('[Phosphor] Dashboard detected engine after '+pollCount*100+'ms');
+      }
+      if(window.__v86Failed){
+        clearInterval(pollId);pollId=null;
+        setStatus('v86 unavailable','err');
+        bootBtn.classList.remove('loading');updateBootBtn();
+        toast('Failed to load v86','error');
+      }
+      /* Hard stop after 30 seconds */
+      if(pollCount>=300){
+        clearInterval(pollId);pollId=null;
+        setStatus('v86 timeout','err');
+        bootBtn.classList.remove('loading');updateBootBtn();
+        toast('v86 load timed out — check network/adblocker','error');
+      }
+    },100);
+  }
+  startPoll();
+
+  function updateBootBtn(){
+    var isQ=selEngine.value==='qemu';
+    bootBtn.disabled=isQ?false:!engineOK;
+    bootBtn.textContent=isQ?'INITIALIZE CORE':(engineOK?'INITIALIZE CORE':'LOADING ENGINE...');
+    bootBtn.classList.toggle('loading',!isQ&&!engineOK);
+  }
+
+  /* Network check */
+  fetch('https://copy.sh/v86/',{mode:'no-cors',cache:'no-store'}).then(function(){
+    copyBlocked=false;netDot.className='net-dot ok';netDot.title='copy.sh reachable';
+  }).catch(function(){
+    copyBlocked=true;netDot.className='net-dot off';netDot.title='copy.sh blocked — CORS proxy';copyWarn.classList.add('on');
+  });
+
+  /* ---- FETCH WITH PROXY ---- */
+  function streamBlob(resp){
+    var total=parseInt(resp.headers.get('content-length'))||0;
+    if(total>0){
+      var reader=resp.body.getReader(),chunks=[],loaded=0;
+      function pump(){return reader.read().then(function(r){
+        if(r.done){showDL(false);return new Blob(chunks)}
+        chunks.push(r.value);loaded+=r.value.length;setDL((loaded/total)*100);return pump();
+      })}
+      return pump();
+    }
+    return resp.blob().then(function(b){showDL(false);return b});
+  }
+  function fetchImage(url){
+    if(!copyBlocked){
+      return fetch(url).then(function(r){if(!r.ok)throw 0;return streamBlob(r)}).catch(function(){return proxyFetch(url)});
+    }
+    return proxyFetch(url);
+  }
+  function proxyFetch(url){
+    console.log('[Phosphor] Proxy: '+url);
+    return fetch(PROXY+encodeURIComponent(url)).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return streamBlob(r)});
+  }
+
+  /* ---- RESOLVE DRIVE ---- */
+  function resolveDrive(drv){
+    var cfg=null;
+    if(chkAdv.checked){
+      var t=document.querySelector('.mt[data-d="'+drv+'"]').value;
+      if(t==='url'){var u=document.querySelector('.mu[data-d="'+drv+'"]').value.trim();if(u)cfg={t:'url',u:u}}
+      else if(t==='file'){var f=document.querySelector('.mf[data-d="'+drv+'"]');if(f&&f.files.length)cfg={t:'file',f:f.files[0]}}
+    }
+    if(!cfg&&selProfile.value&&PRESETS[selProfile.value])cfg=PRESETS[selProfile.value][drv];
+    if(!cfg&&selProfile.value==='custom'&&drv==='cdrom'&&inpCustom.files.length)cfg={t:'file',f:inpCustom.files[0]};
+    if(!cfg)return Promise.resolve(null);
+    if(cfg.t==='file')return Promise.resolve({buffer:cfg.f});
+    var name=cfg.u.split('/').pop()||drv+'.img';
+    toast('Downloading '+name+'...');showDL(true);setDL(0);
+    return fetchImage(cfg.u).then(function(blob){
+      if(blob.size<1024)throw new Error('Download too small ('+blob.size+' B)');
+      var file=new File([blob],name,{type:'application/octet-stream'});
+      toast(name+' ready ('+(blob.size/1024/1024).toFixed(1)+' MB)');return{buffer:file};
+    });
+  }
+
+  /* ---- ENGINE / PROFILE SWITCH ---- */
+  selEngine.addEventListener('change',function(){
+    var isQ=selEngine.value==='qemu';
+    wrapCustom.style.display='none';wrapX64.style.display=isQ?'':'none';
+    fldPreset.style.display=isQ?'none':'';
+    ramV86.style.display=isQ?'none':'';ramQEMU.style.display=isQ?'':'none';fldVga.style.display=isQ?'none':'';
+    isoBadge.textContent=isQ?'x64':(engineOK?'x86':'--');isoBadge.classList.toggle('on',isQ||engineOK);
+    updateCopyWarn();updateBootBtn();stopEmu();
+  });
+  selProfile.addEventListener('change',function(){
+    var v=selProfile.value;wrapCustom.style.display=v==='custom'?'':'none';
+    if(!v){clearAllMounts();copyWarn.classList.remove('on');return}
+    if(PRESETS[v])applyPreset(PRESETS[v]);
+    else{slRam.value=64;vRam.textContent='64 MB';slVga.value=8;vVga.textContent='8 MB';selBoot.value='cdrom';clearAllMounts()}
+    updateCopyWarn();
+  });
+  function updateCopyWarn(){var v=selProfile.value;if(v&&v!=='custom'&&PRESETS[v]&&copyBlocked)copyWarn.classList.add('on');else copyWarn.classList.remove('on')}
+  function applyPreset(p){slRam.value=p.ram;vRam.textContent=p.ram+' MB';slVga.value=p.vga;vVga.textContent=p.vga+' MB';selBoot.value=p.boot;chkAcpi.checked=true;chkApic.checked=false;clearAllMounts();if(chkAdv.checked)setMountVal('cdrom',p.cdrom)}
+  function clearAllMounts(){['hda','cdrom','fda','bzimage','initrd'].forEach(function(d){setMountVal(d,null)})}
+
+  inpCustom.addEventListener('change',function(){if(inpCustom.files.length)fnCustom.textContent=inpCustom.files[0].name});
+  inpX64.addEventListener('change',function(){if(inpX64.files.length)fnX64.textContent=inpX64.files[0].name});
+  slRam.addEventListener('input',function(){vRam.textContent=slRam.value+' MB'});
+  slVga.addEventListener('input',function(){vVga.textContent=slVga.value+' MB'});
+  inpRam.addEventListener('input',function(){var v=parseFloat(inpRam.value)||0,u=parseInt(selRamUnit.value)||1024;if(v*u>32768)inpRam.value=Math.floor(32768/u);deselectRamPresets()});
+  selRamUnit.addEventListener('change',deselectRamPresets);
+  function deselectRamPresets(){document.querySelectorAll('#ram-presets button').forEach(function(b){b.classList.remove('active')})}
+  document.querySelectorAll('#ram-presets button').forEach(function(b){
+    b.addEventListener('click',function(){var mb=parseInt(b.dataset.mb);deselectRamPresets();b.classList.add('active');if(mb>=1024){inpRam.value=mb/1024;selRamUnit.value='1024'}else{inpRam.value=mb;selRamUnit.value='1'}});
+  });
+  chkNet.addEventListener('change',function(){relayRow.classList.toggle('on',chkNet.checked)});
+  chkAdv.addEventListener('change',function(){advBody.classList.toggle('hide',!chkAdv.checked);if(chkAdv.checked&&selProfile.value&&PRESETS[selProfile.value])applyPreset(PRESETS[selProfile.value])});
+
+  document.querySelectorAll('.mt').forEach(function(s){s.addEventListener('change',function(){setMountType(s.dataset.d,s.value)})});
+  function setMountType(d,t){setMountVal(d,t==='none'?null:t)}
+  function setMountVal(d,cfg){
+    var row=document.querySelector('.mt[data-d="'+d+'"]').closest('.mount-row');
+    var url=row.querySelector('.mu'),fbtn=row.querySelector('.fbtn'),sel=row.querySelector('.mt');
+    if(!cfg){sel.value='none';url.style.display='none';fbtn.style.display='none';url.value='';return}
+    if(cfg.t==='url'){sel.value='url';url.style.display='';fbtn.style.display='none';url.value=cfg.u||''}
+    else if(cfg.t==='file'){sel.value='file';url.style.display='none';fbtn.style.display=''}
+  }
+  document.querySelectorAll('.mf').forEach(function(inp){inp.addEventListener('change',function(){var btn=inp.closest('.fbtn'),fn=btn.querySelector('.fn');if(!fn){fn=document.createElement('span');fn.className='fn';btn.appendChild(fn)}if(inp.files.length)fn.textContent=inp.files[0].name})});
+
+  function getRamMB(){if(selEngine.value==='v86')return parseInt(slRam.value);var v=parseFloat(inpRam.value)||2,u=parseInt(selRamUnit.value)||1024;return Math.max(16,Math.min(Math.round(v*u),32768))}
+
+  function buildConfig(drives){
+    var scr=$('v86-screen');
+    var c={wasm_path:'https://cdn.jsdelivr.net/npm/v86@0.5.373/build/v86.wasm?v=skjemu20260622',memory_size:getRamMB()*1024*1024,vga_memory_size:parseInt(slVga.value)*1024*1024,container:scr,screen:{container:scr,use_graphical_text:false},bios:{url:BIOS_BASE+'/seabios.bin'},vga_bios:{url:BIOS_BASE+'/vgabios.bin'},acpi:chkAcpi.checked,apic:chkApic.checked,autostart:true,fastboot:true};
+    var bo=selBoot.value;c.boot_order=bo==='cdrom'?0x123:bo==='hda'?0x213:0x321;
+    if(chkNet.checked&&inpRelay.value.trim())c.network_relay_url=inpRelay.value.trim();
+    for(var d of['hda','cdrom','fda','bzimage','initrd']){if(drives[d])c[d]=drives[d]}
+    return c;
+  }
+
+  /* ---- BOOT / STOP ---- */
+  bootBtn.addEventListener('click',bootSystem);
+  stopBtn.addEventListener('click',stopEmu);
+  $('tb-stop').addEventListener('click',stopEmu);
+
+  function bootSystem(){stopEmu();if(selEngine.value==='v86'){if(!engineOK||!window.__v86Ctor){toast('v86 engine not loaded','error');return}bootV86()}else{bootQEMU()}}
+
+  function bootV86(){
+    bootBtn.disabled=true;bootBtn.textContent='DOWNLOADING IMAGE...';bootBtn.classList.remove('loading');
+    var drives={};
+    var chain=Promise.resolve(drives);
+    ['hda','cdrom','fda','bzimage','initrd'].forEach(function(d){
+      chain=chain.then(function(dr){return resolveDrive(d).then(function(r){if(r)dr[d]=r;return dr})});
+    });
+    chain.then(function(drives){
+      var cfg=buildConfig(drives);
+      console.log('[Phosphor] Booting:',JSON.stringify({mem:cfg.memory_size,cdrom:cfg.cdrom?'['+((cfg.cdrom.buffer&&cfg.cdrom.buffer.size)||0)+'B]':null,hda:cfg.hda?'['+((cfg.hda.buffer&&cfg.hda.buffer.size)||0)+'B]':null},null,2));
+      placeholder.style.display='none';screenWrap.classList.add('on','running');termWrap.classList.remove('on');
+      vmToolbar.classList.add('on');stopBtn.style.display='';bootBtn.disabled=true;bootBtn.textContent='RUNNING';
+      emu=new(window.__v86Ctor)(cfg);
+      emu.add_listener('emulator-ready',function(){toast('Emulator ready');bootBtn.disabled=false;bootBtn.textContent='RUNNING'});
+      emu.add_listener('emulator-stopped',function(){toast('Emulator stopped','warn');stopEmu()});
+      emu.add_listener('emulator-error',function(err){toast('VM error: '+(err&&err.message?err.message:String(err)),'error')});
+      emu.add_listener('serial0-output-byte',function(b){var ch=typeof b==='number'?String.fromCharCode(b):String(b);serialBuf+=ch;serCount++;if(!serTimer){serTimer=setTimeout(flushSerial,80)}});
+      var scrEl=$('v86-screen');scrEl.addEventListener('focusin',onFocusIn);scrEl.addEventListener('focusout',onFocusOut);focusOverlay.classList.add('on');
+    }).catch(function(e){toast('Boot failed: '+e.message,'error');showDL(false);stopEmu()});
+  }
+
+  function bootQEMU(){
+    placeholder.style.display='none';screenWrap.classList.remove('on','running');termWrap.classList.add('on');
+    stopBtn.style.display='';bootBtn.disabled=true;bootBtn.textContent='RUNNING';bootBtn.classList.remove('loading');
+    if(typeof Terminal!=='undefined'){
+      var t=new Terminal({cursorBlink:true,theme:{background:'#000',foreground:'#00ffcc',cursor:'#00ffcc'}});
+      t.open(termWrap);t.write('\x1b[1;33mPHOSPHOR MATRIX \x2014 qemu-wasm x64\x1b[0m\r\n\r\nRAM: '+getRamMB()+' MB\r\n');
+      if(inpX64.files.length)t.write('Image: '+inpX64.files[0].name+' ('+(inpX64.files[0].size/1024/1024).toFixed(1)+' MB)\r\n\r\n');else t.write('No image selected.\r\n\r\n');
+      t.write('x64 requires pre-compiled qemu-wasm WASM binary.\r\n');emu={t:'qemu',term:t};
+    }else{
+      termWrap.innerHTML='<div style="padding:16px;color:#ffcc00;font-family:monospace;font-size:12px"><b>qemu-wasm x64</b><br><br>xterm.js not loaded.<br>'+(inpX64.files.length?'Selected: <b>'+inpX64.files[0].name+'</b>':'No image.')+'</div>';
+      emu={t:'qemu',term:null};
+    }
+    toast('x64 scaffold loaded','warn');
+  }
+
+  function stopEmu(){
+    if(emu){try{if(emu.destroy&&typeof emu.destroy==='function')emu.destroy();else if(emu.term)emu.term.dispose()}catch(e){}emu=null}
+    $('v86-screen').innerHTML='';termWrap.innerHTML='';screenWrap.classList.remove('on','running');termWrap.classList.remove('on');
+    placeholder.style.display='';vmToolbar.classList.remove('on');focusOverlay.classList.remove('on');
+    serialPanel.classList.remove('on');serialOpen=false;serialBuf='';serCount=0;serCountEl.textContent='0';serialOut.textContent='';
+    if(serTimer){clearTimeout(serTimer);serTimer=null}showDL(false);stopBtn.style.display='none';updateBootBtn();
+  }
+
+  function flushSerial(){if(!serialBuf)return;serialOut.textContent+=serialBuf;serialBuf='';serCountEl.textContent=serCount;serialOut.scrollTop=serialOut.scrollHeight;serTimer=null;while(serialOut.textContent.length>100000)serialOut.textContent=serialOut.textContent.substring(5000)}
+  function onFocusIn(){focusInd.className='captured';focusInd.textContent='Keyboard captured';focusOverlay.classList.remove('on')}
+  function onFocusOut(){focusInd.className='lost';focusInd.textContent='Click to capture';if(emu&&emu.t!=='qemu')focusOverlay.classList.add('on')}
+  focusOverlay.addEventListener('click',function(){focusOverlay.classList.remove('on');var el=$('v86-screen').querySelector('canvas')||$('v86-screen');if(el.focus)el.focus()});
+
+  $('tb-cad').addEventListener('click',function(){if(emu&&emu.keyboard_send_scancodes){emu.keyboard_send_scancodes([0x1D,0x38,0x53,0xD3,0xB8,0x9D]);toast('Sent Ctrl+Alt+Del')}});
+  $('tb-fs').addEventListener('click',function(){if(document.fullscreenElement)document.exitFullscreen();else if(screenWrap.requestFullscreen)screenWrap.requestFullscreen()});
+  $('tb-serial').addEventListener('click',function(){serialOpen=!serialOpen;serialPanel.classList.toggle('on',serialOpen);serialPanel.classList.toggle('collapsed',!serialOpen);if(serialOpen)flushSerial()});
+  $('ser-toggle').addEventListener('click',function(e){e.stopPropagation();$('tb-serial').click()});
+  $('serial-hdr').addEventListener('click',function(){serialPanel.classList.toggle('collapsed')});
+
+  $('tb-save').addEventListener('click',function(){
+    if(!emu||!emu.save_state){toast('Save not available','warn');return}
+    toast('Saving...');$('tb-save').textContent='Saving...';
+    try{emu.save_state(function(err,state){
+      $('tb-save').textContent='Save State';if(err){toast('Save failed: '+err,'error');return}
+      var json=JSON.stringify(state),blob=new Blob([json],{type:'application/json'});
+      var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='phosphor-state-'+Date.now()+'.json';a.click();URL.revokeObjectURL(a.href);
+      toast('State saved ('+(blob.size/1024/1024).toFixed(1)+' MB)');
+    })}catch(e){$('tb-save').textContent='Save State';toast('Save error: '+e.message,'error')}
+  });
+  $('tb-load').addEventListener('click',function(){
+    if(!emu||!emu.restore_state){toast('Load not available','warn');return}
+    var inp=document.createElement('input');inp.type='file';inp.accept='.json';
+    inp.onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;toast('Loading...');var reader=new FileReader();reader.onload=function(){try{emu.restore_state(JSON.parse(reader.result));toast('State restored')}catch(e){toast('Restore failed: '+e.message,'error')}};reader.readAsText(f)};
+    inp.click();
+  });
+
+  /* Touch Trackpad */
+  (function(){
+    var pad=$('touchpad');if(!pad)return;var sx=0,sy=0,lx=0,ly=0,touching=false,longT=null,isLong=false,tc=0;
+    pad.addEventListener('touchstart',function(e){e.preventDefault();var ts=e.touches;tc=ts.length;if(ts.length===1){var t=ts[0];sx=lx=t.clientX;sy=ly=t.clientY;touching=true;isLong=false;longT=setTimeout(function(){isLong=true;mClick(2)},500)}else if(ts.length>=2){clearTimeout(longT);isLong=true;mClick(2)}},{passive:false});
+    pad.addEventListener('touchmove',function(e){e.preventDefault();if(!touching||e.touches.length!==1)return;clearTimeout(longT);var t=e.touches[0],dx=t.clientX-lx,dy=t.clientY-ly;lx=t.clientX;ly=t.clientY;if(emu&&emu.mouse_set_status){emu.mouse_set_status(true);emu.mouse_move(dx,dy)}},{passive:false});
+    pad.addEventListener('touchend',function(e){e.preventDefault();clearTimeout(longT);if(touching&&!isLong&&tc===1&&Math.abs(lx-sx)<10&&Math.abs(ly-sy)<10)mClick(1);touching=false;isLong=false;tc=0},{passive:false});
+    function mClick(b){if(!emu||!emu.mouse_set_status)return;emu.mouse_set_status(true);emu.mouse_down(b===1?0:2);setTimeout(function(){emu.mouse_up(b===1?0:2);emu.mouse_set_status(false)},80)}
+  })();
+
+  /* Special Keys */
+  (function(){
+    document.querySelectorAll('#keys-bar .kb').forEach(function(btn){
+      var dn=function(e){e.preventDefault();e.stopPropagation();hBtn(btn,true)};var up=function(e){e.preventDefault();e.stopPropagation();hBtn(btn,false)};
+      btn.addEventListener('touchstart',dn,{passive:false});btn.addEventListener('touchend',up,{passive:false});btn.addEventListener('mousedown',dn);btn.addEventListener('mouseup',up);
+    });
+    function hBtn(btn,down){
+      if(btn.classList.contains('sticky')&&btn.dataset.mod){if(down){sticky[btn.dataset.mod]=!sticky[btn.dataset.mod];btn.classList.toggle('sticky-on',sticky[btn.dataset.mod])}return}
+      if(!btn.dataset.sc)return;var code=parseInt(btn.dataset.sc);
+      if(emu&&emu.keyboard_send_scancodes&&down){var p=[];if(sticky.ctrl)p.push(29,29|0x80);if(sticky.alt)p.push(56,56|0x80);emu.keyboard_send_scancodes(p.concat([code,code|0x80]))}
+      else if(emu&&emu.term&&down){var map={1:'\x1b',15:'\t',14:'\x08',28:'\r',57:' ',75:'\x1b[5~',78:'\x1b[6~',71:'\x1b[H',79:'\x1b[F',103:'\x1b[A',105:'\x1b[D',108:'\x1b[B',106:'\x1b[C'};if(map[code]!==undefined){var out='';if(sticky.ctrl)out+='\x1b';if(sticky.alt)out+='\x1b';out+=map[code];emu.term.write(out)}}
+    }
+  })();
+
+  document.addEventListener('touchmove',function(e){if(e.target.closest('#mobile-ctrl')||e.target.closest('#screen-wrap')||e.target.closest('#term-wrap'))e.preventDefault()},{passive:false});
+  document.addEventListener('keydown',function(e){if(['Tab','Escape','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'].includes(e.key))e.preventDefault()});
+
+  window.addEventListener('load',function(){
+    console.log('Cross-Origin Isolated:',window.crossOriginIsolated);
+    if(!('ontouchstart'in window||navigator.maxTouchPoints>0))$('mobile-ctrl').style.display='none';
+  });
+})();
+</script>
+</body>
+</html>
